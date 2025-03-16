@@ -203,6 +203,9 @@ class EngineArgs:
 
     calculate_kv_scales: Optional[bool] = None
 
+    # fairness
+    scheduler_type: str = "vllm"
+
     def __post_init__(self):
         if not self.tokenizer:
             self.tokenizer = self.model
@@ -984,6 +987,9 @@ class EngineArgs:
             'be loaded from the model checkpoint if available. '
             'Otherwise, the scales will default to 1.0.')
 
+        # fairness
+        parser.add_argument("--scheduler_type", type=str, default=EngineArgs.scheduler)
+        
         return parser
 
     @classmethod
@@ -1228,7 +1234,10 @@ class EngineArgs:
             multi_step_stream_outputs=self.multi_step_stream_outputs,
             send_delta_data=(envs.VLLM_USE_RAY_SPMD_WORKER
                              and parallel_config.use_ray),
-            policy=self.scheduling_policy)
+            policy=self.scheduling_policy,
+            scheduler_type=self.scheduler_type,
+            )
+        
         lora_config = LoRAConfig(
             bias_enabled=self.enable_lora_bias,
             max_lora_rank=self.max_lora_rank,

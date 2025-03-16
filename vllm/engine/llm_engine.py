@@ -19,8 +19,10 @@ import vllm.envs as envs
 from vllm.config import (DecodingConfig, LoRAConfig, ModelConfig,
                          ObservabilityConfig, ParallelConfig, SchedulerConfig,
                          VllmConfig)
+# add fairness scheduler
 from vllm.core.scheduler import (ScheduledSequenceGroup, Scheduler,
-                                 SchedulerOutputs)
+                                 SchedulerOutputs, VTCScheduler)
+
 from vllm.engine.arg_utils import EngineArgs
 from vllm.engine.metrics_types import StatLoggerBase, Stats
 from vllm.engine.output_processor.interfaces import (
@@ -346,14 +348,26 @@ class LLMEngine:
         # Create the scheduler.
         # NOTE: the cache_config here have been updated with the numbers of
         # GPU and CPU blocks, which are profiled in the distributed executor.
-        self.scheduler = [
-            Scheduler(
-                self.scheduler_config, self.cache_config, self.lora_config,
-                self.parallel_config.pipeline_parallel_size,
-                self.async_callbacks[v_id]
-                if self.model_config.use_async_output_proc else None)
-            for v_id in range(self.parallel_config.pipeline_parallel_size)
-        ]
+        # fairness: if scheduler_config is "vllm", then original scheduler will be used
+        # fairness: if it is "vtc_fair", VTC scheduler will be used
+        if(self.scheduler_config.scheduler_type == "vllm"):
+            self.scheduler = [
+                Scheduler(
+                    self.scheduler_config, self.cache_config, self.lora_config,
+                    self.parallel_config.pipeline_parallel_size,
+                    self.async_callbacks[v_id]
+                    if self.model_config.use_async_output_proc else None)
+                for v_id in range(self.parallel_config.pipeline_parallel_size)
+            ]
+        elif(self.scheduler_config.scheduler_type == "vtc_fair"):
+            self.scheduler = [
+                VTCScheduler(
+                    self.scheduler_config, self.cache_config, self.lora_config,
+                    self.parallel_config.pipeline_parallel_size,
+                    self.async_callbacks[v_id]
+                    if self.model_config.use_async_output_proc else None)
+                for v_id in range(self.parallel_config.pipeline_parallel_size)
+            ]
 
         # Metric Logging.
         if self.log_stats:

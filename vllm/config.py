@@ -1503,6 +1503,9 @@ class SchedulerConfig:
 
     chunked_prefill_enabled: bool = field(init=False)
 
+    # fairness
+    scheduler_type: str = "vllm"
+
     def compute_hash(self) -> str:
         """
         WARNING: Whenever a new field is added to this config,
